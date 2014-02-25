@@ -8,7 +8,7 @@
                 number  : 0,	
                 selected : false,
             }
-        }
+        },
     });
 
 //Month view 
@@ -19,30 +19,27 @@
             "click" : "select"
         },	
         initialize: function() {
-            this.listenTo(this.model, 'change', this.render);
+            this.listenToOnce(this.model, 'change', this.render);
         },
 	select : function(e) {
-            if($(e.currentTarget.innerHTML).get("selector") == this.model.get('name')) {
-                this.model.set({"selected" : true});
-                $(e.currentTarget).css({background: "red"});
-            } else {
-                this.model.set({"selected" : false});
-            }
-            console.log($(e.currentTarget.innerHTML).get("selector"));
+            this.model.set({"selected" : true});
         },
         render: function () {
-            if (this.model.get('selected') == true) {
-                //this.set({color : "red"});
+	    console.log("Rendering " + this.model.get('name'));
+            if (this.model.get("selected")) {
+                this.$el.html(this.model.get('name')).css({color : "red"});
             } else {
-                //this.set({color : "blue"});
+                this.$el.html(this.model.get('name'));
             }
-            this.$el.html(this.model.get('name'));
             return this;
         }
     });
 
     var Year = Backbone.Collection.extend({
-        model : Month
+        model : Month,
+        comparator : function (model) {
+            return model.get("number");
+        }
     });
 
     var jan = new Month({
@@ -122,8 +119,12 @@
 
     window.AppView = Backbone.View.extend({
         el: $("body"),
+        currentMonth : "",
+        sort : "",
 	initialize: function() {
 		var that = this;
+                currentMonth = "January";
+                sort = "number";
 		months.each(function (mon) {
 			that.addMonth(mon);
 		});
@@ -131,16 +132,48 @@
         events : {
             "click #numButton" : "byNumber",
             "click #nameButton" : "byName",
+            "click #month" : "changeMonth"
         },
         byNumber : function () {
+            var that = this;
+            sort = "number";
             console.log("Sort by number selected");
+            months.sort();
+            months.each(function (mon) {
+                $("#month").remove();
+                $("#month").unbind();
+                that.addMonth(mon);
+            });
+        },
+        changeMonth : function (e) {
+            currentMonth = $(e.currentTarget)[0].innerHTML;
+            console.log("Current month is now " + currentMonth);
+            if (sort === "number") {
+                this.byNumber(); 
+            } else {
+                this.byName();
+            }
         },
         byName : function () {
-            console.log("Sort by name");
+            var that = this;
+            sort = "name";
+            console.log("Sort by name selected");
+            var sortedList =  months.sortBy( function (mon) {
+                return mon.get("name");
+            });
+            sortedList.forEach( function (mon) {
+                $("#month").remove();
+                $("#month").unbind();
+                that.addMonth(mon);
+            }); 
         },
         addMonth : function (mon) {
             var view = new MonthView({model : mon});
-            this.$el.append(view.render().el);
+            if (mon.get('name') != currentMonth) {
+                mon.set({"selected" : false});
+            }
+            var monthView = view.render().el;
+            this.$el.append(monthView);
         }
     });
     var appView = new AppView;
