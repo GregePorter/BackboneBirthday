@@ -25,7 +25,6 @@
             this.model.set({"selected" : true});
         },
         render: function () {
-	    console.log("Rendering " + this.model.get('name'));
             if (this.model.get("selected")) {
                 this.$el.html(this.model.get('name')).css({color : "red"});
             } else {
@@ -35,6 +34,7 @@
         }
     });
 
+//The Year collection is a collection of Months. It has a custom comparator for sorting by number.
     var Year = Backbone.Collection.extend({
         model : Month,
         comparator : function (model) {
@@ -117,27 +117,56 @@
     months.add(nov);
     months.add(dec);
 
+//birthdayMonth API, the user clicking functionality is linked to the AppView's events instead of having them directly here too
+    var birthdayMonth = (function () {
+        var currentMonth = "";
+	
+        return {
+            getMonth : function () {
+                return this.currentMonth;
+            },
+            setMonth : function (name) {
+                this.currentMonth = name;
+                console.log("User selected " + name + " as the new month");
+            }
+        };
+    })();
+
+//AppView is the main view for the application
     window.AppView = Backbone.View.extend({
         el: $("body"),
-        currentMonth : "",
         sort : "",
+
+        //The initialize function gets the months from the Year model and renders each of them
+        //One way to improve on this would be to make a YearView which would call subviews
 	initialize: function() {
 		var that = this;
-                currentMonth = "January";
                 sort = "number";
 		months.each(function (mon) {
 			that.addMonth(mon);
 		});
 	},
+       
+        //AppView listens to clicks from the buttons which sort the months and clicks to the month div
         events : {
             "click #numButton" : "byNumber",
             "click #nameButton" : "byName",
             "click #month" : "changeMonth"
         },
+
+        //changeMonth updates the birthdayMonth API with the current month and it triggers the view to re-render the months 
+        changeMonth : function (e) {
+            birthdayMonth.setMonth($(e.currentTarget)[0].innerHTML);
+            if (sort === "number") {
+                this.byNumber(); 
+            } else {
+                this.byName();
+            }
+        },
+        //this sorts the months based on the Collections default comparator (Number) and then re-renders
         byNumber : function () {
             var that = this;
             sort = "number";
-            console.log("Sort by number selected");
             months.sort();
             months.each(function (mon) {
                 $("#month").remove();
@@ -145,19 +174,10 @@
                 that.addMonth(mon);
             });
         },
-        changeMonth : function (e) {
-            currentMonth = $(e.currentTarget)[0].innerHTML;
-            console.log("Current month is now " + currentMonth);
-            if (sort === "number") {
-                this.byNumber(); 
-            } else {
-                this.byName();
-            }
-        },
+        //this sorts the months with a custom sorting function (by Name) and then renders the view based on the resultant list
         byName : function () {
             var that = this;
             sort = "name";
-            console.log("Sort by name selected");
             var sortedList =  months.sortBy( function (mon) {
                 return mon.get("name");
             });
@@ -167,9 +187,10 @@
                 that.addMonth(mon);
             }); 
         },
+        //this is the render method for AppView. It checks to see if the supplied month is the current month and, if it is, it is colored appropriatly
         addMonth : function (mon) {
             var view = new MonthView({model : mon});
-            if (mon.get('name') != currentMonth) {
+            if (mon.get('name') != birthdayMonth.getMonth()) {
                 mon.set({"selected" : false});
             }
             var monthView = view.render().el;
